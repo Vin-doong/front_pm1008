@@ -122,55 +122,67 @@ const Schedule = () => {
     fetchSchedules();
     fetchTodayPlans();
   }, [navigate]);
-  
+
   // 스케줄 데이터 로드
   const fetchSchedules = async () => {
     try {
       setLoading(true);
       const response = await getSchedules();
       
+      console.log('서버에서 받은 스케줄 데이터:', response.data); // 데이터 확인
+      
       // 서버 응답을 Calendar 이벤트 형식으로 변환
       const calendarEvents = [];
       
-      response.data.forEach(schedule => {
-        // 시작 날짜와 종료 날짜 계산
-        const startDate = moment(schedule.intakeStart);
-        let endDate;
-        
-        if (schedule.intakeEnd) {
-          endDate = moment(schedule.intakeEnd);
-        } else if (schedule.intakeDistance) {
-          // 종료일이 없고 기간이 있는 경우 종료일 계산
-          endDate = moment(startDate).add(schedule.intakeDistance - 1, 'days');
-        } else {
-          // 기본값으로 시작일과 동일하게 설정
-          endDate = moment(startDate);
-        }
-        
-        // 복용 기간 동안의 이벤트 생성
-        const currentDate = moment(startDate);
-        
-        while (currentDate.isSameOrBefore(endDate, 'day')) {
-          const eventStart = new Date(
-            currentDate.format('YYYY-MM-DD') + 'T' + getTimeForSlot(schedule.intakeTime)
-          );
-          const eventEnd = new Date(
-            currentDate.format('YYYY-MM-DD') + 'T' + getEndTimeForSlot(schedule.intakeTime)
-          );
+      if (response.data && Array.isArray(response.data)) {
+        response.data.forEach(schedule => {
+          // 시작 날짜와 종료 날짜 계산 (null 체크 추가)
+          if (!schedule.intakeStart) {
+            console.warn('시작일이 없는 스케줄 데이터:', schedule);
+            return;
+          }
           
-          calendarEvents.push({
-            id: `${schedule.scheduleId}-${currentDate.format('YYYYMMDD')}`,
-            title: `${schedule.supplementName} 복용 (${schedule.intakeTime})`,
-            start: eventStart,
-            end: eventEnd,
-            allDay: false,
-            resource: schedule // 원본 데이터를 resource에 저장
-          });
+          const startDate = moment(schedule.intakeStart);
+          let endDate;
           
-          currentDate.add(1, 'day');
-        }
-      });
+          if (schedule.intakeEnd) {
+            endDate = moment(schedule.intakeEnd);
+          } else if (schedule.intakeDistance) {
+            // 종료일이 없고 기간이 있는 경우 종료일 계산
+            endDate = moment(startDate).add(schedule.intakeDistance - 1, 'days');
+          } else {
+            // 기본값으로 시작일과 동일하게 설정
+            endDate = moment(startDate);
+          }
+          
+          // 복용 기간 동안의 이벤트 생성
+          const currentDate = moment(startDate);
+          
+          while (currentDate.isSameOrBefore(endDate, 'day')) {
+            const eventStart = new Date(
+              currentDate.format('YYYY-MM-DD') + 'T' + getTimeForSlot(schedule.intakeTime)
+            );
+            const eventEnd = new Date(
+              currentDate.format('YYYY-MM-DD') + 'T' + getEndTimeForSlot(schedule.intakeTime)
+            );
+            
+            calendarEvents.push({
+              id: `${schedule.scheduleId}-${currentDate.format('YYYYMMDD')}`,
+              title: `${schedule.supplementName} 복용 (${schedule.intakeTime})`,
+              start: eventStart,
+              end: eventEnd,
+              allDay: false,
+              resource: schedule // 원본 데이터를 resource에 저장
+            });
+            
+            currentDate.add(1, 'day');
+          }
+        });
+      } else {
+        console.warn('API에서 스케줄 데이터를 받지 못했습니다.');
+      }
       
+      console.log('생성된 캘린더 이벤트:', calendarEvents);
       setEvents(calendarEvents);
       setLoading(false);
     } catch (error) {
@@ -179,7 +191,7 @@ const Schedule = () => {
       setLoading(false);
     }
   };
-  
+
   // 오늘의 복용 계획 조회
   const fetchTodayPlans = async () => {
     try {
@@ -187,6 +199,12 @@ const Schedule = () => {
       const morningPlans = await getSchedulesByTime('아침');
       const afternoonPlans = await getSchedulesByTime('점심');  
       const eveningPlans = await getSchedulesByTime('저녁');
+      
+      console.log('시간대별 조회 결과:', {
+        아침: morningPlans.data,
+        점심: afternoonPlans.data,
+        저녁: eveningPlans.data
+      });
       
       // 데이터 합치기
       const allPlans = [
@@ -198,6 +216,8 @@ const Schedule = () => {
       // 오늘 날짜에 해당하는 일정만 필터링
       const today = moment().format('YYYY-MM-DD');
       const todayOnly = allPlans.filter(plan => {
+        if (!plan.intakeStart) return false;
+        
         const startDate = moment(plan.intakeStart).format('YYYY-MM-DD');
         const endDate = plan.intakeEnd ? moment(plan.intakeEnd).format('YYYY-MM-DD') : null;
         const duration = plan.intakeDistance || 0;
@@ -216,6 +236,7 @@ const Schedule = () => {
         return afterStart && (beforeEnd || withinDuration);
       });
       
+      console.log('오늘의 복용 계획:', todayOnly);
       setTodayPlans(todayOnly);
       
       // 주간 계획 데이터 생성
@@ -612,30 +633,6 @@ const Schedule = () => {
             </div>
           </div>
           
-          {/* 주간 복용 계획 */}
-          <div id="weekly" className="bg-white shadow rounded-lg p-5 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">📅 주간 복용 계획</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-7 gap-2 text-center">
-              {Array.from({ length: 7 }).map((_, i) => {
-                const day = new Date();
-                day.setDate(day.getDate() - day.getDay() + i + 1);
-                const dayName = day.toLocaleDateString('en-US', { weekday: 'long' });
-                const status = weeklyPlan[dayName]?.status || '미완료';
-                return (
-                  <div key={i} className={`p-3 border rounded-lg cursor-pointer ${getStatusClass(status)}`}>
-                    <p className="text-sm font-semibold">{day.toLocaleDateString('ko-KR', { weekday: 'short' })}</p>
-                    <p className="text-xs text-gray-600">{day.toLocaleDateString()}</p>
-                    <ul className="mt-1 text-xs text-gray-700">
-                      {weeklyPlan[dayName]?.items?.map((item, j) => (
-                        <li key={j}>✅ {item}</li>
-                      )) || <li>❌ 없음</li>}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          
           {/* 복용 일정 캘린더 */}
           <div id="calendar" className="p-6 bg-white shadow rounded-lg mb-6">
             <div className="flex justify-between items-center mb-4">
@@ -648,33 +645,51 @@ const Schedule = () => {
             </div>
             
             <div style={{ height: 600 }}>
-              <StyledCalendar
-                localizer={localizer}
-                events={events}
-                startAccessor="start"
-                endAccessor="end"
-                style={{ height: '100%' }}
-                onEventDrop={moveEvent}
-                resizable={false}
-                selectable={true}
-                onSelectSlot={handleSelectSlot}
-                onSelectEvent={handleSelectEvent}
-                views={['month', 'week', 'day']}
-                defaultView="month"
-                formats={{
-                  dayFormat: (date, culture, localizer) =>
-                    localizer.format(date, 'D', culture)
-                }}
-                messages={{
-                  today: '오늘',
-                  previous: '이전',
-                  next: '다음',
-                  month: '월',
-                  week: '주',
-                  day: '일',
-                  noEventsInRange: '예정된 일정이 없습니다.'
-                }}
-              />
+            <StyledCalendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '100%' }}
+              onEventDrop={moveEvent}
+              resizable={false}
+              selectable={true}
+              onSelectSlot={handleSelectSlot}
+              onSelectEvent={handleSelectEvent}
+              views={['month', 'week', 'day']}
+              defaultView="month"
+              
+              // 이벤트 스타일 설정
+              eventPropGetter={(event) => {
+                const supplementName = event.resource?.supplementName;
+                const intakeTime = event.resource?.intakeTime;
+                
+                // 영양제 이름이나 시간대로 분류
+                if (intakeTime === '아침') {
+                  return { className: 'morning-event' };
+                } else if (intakeTime === '점심') {
+                  return { className: 'afternoon-event' };
+                } else if (intakeTime === '저녁') {
+                  return { className: 'evening-event' };
+                }
+                
+                return {};
+              }}
+              
+              formats={{
+                dayFormat: (date, culture, localizer) =>
+                  localizer.format(date, 'D', culture)
+              }}
+              messages={{
+                today: '오늘',
+                previous: '이전',
+                next: '다음',
+                month: '월',
+                week: '주',
+                day: '일',
+                noEventsInRange: '예정된 일정이 없습니다.'
+              }}
+            />
             </div>
           </div>
           
