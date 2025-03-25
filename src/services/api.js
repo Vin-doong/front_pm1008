@@ -466,13 +466,42 @@ export const getProductDetailWithHealth = async (productId) => {
   }
 };
 
-
 // 제품 DB 전용 검색 API (리뷰 등록/수정 시 사용)
 export const searchProductsFromDB = (keyword) => {
   const encodedKeyword = encodeURIComponent(keyword);
   // 캐싱 방지를 위한 타임스탬프 추가
   const timestamp = new Date().getTime();
   return api.get(`/products/db-search?keyword=${encodedKeyword}&_=${timestamp}`);
+};
+
+// 스케줄 목록 조회
+export const getSchedules = async () => {
+  return api.get('/schedule');
+};
+
+// 특정 스케줄 조회
+export const getScheduleById = async (scheduleId) => {
+  return api.get(`/schedule/${scheduleId}`);
+};
+
+// 스케줄 생성
+export const createSchedule = async (scheduleData) => {
+  return api.post('/schedule', scheduleData);
+};
+
+// 스케줄 수정
+export const updateSchedule = async (scheduleId, scheduleData) => {
+  return api.put(`/schedule/${scheduleId}`, scheduleData);
+};
+
+// 스케줄 삭제
+export const deleteSchedule = async (scheduleId) => {
+  return api.delete(`/schedule/${scheduleId}`);
+};
+
+// 시간대별 스케줄 조회
+export const getSchedulesByTime = async (intakeTime) => {
+  return api.get(`/schedule/time/${intakeTime}`);
 };
 
 export default api;
