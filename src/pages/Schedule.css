@@ -1,0 +1,81 @@
+/* 글씨 애니메이션 */
+.sidebar-text {
+    transition: opacity 0.3s ease, visibility 0s 0.3s;
+}
+
+.sidebar-hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.sidebar-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 캘린더 스타일 */
+.react-calendar {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: white;
+    border: 1px solid #a0a0a0;
+    line-height: 1.125em;
+}
+
+.react-calendar__tile {
+    max-width: 100%;
+    padding: 10px 6.6667px;
+    background: none;
+    text-align: center;
+    line-height: 16px;
+}
+
+.react-calendar__tile--now {
+    background: #f0f8ff;
+    color: #3182ce;
+}
+
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+    background-color: #e6f2ff;
+}
+
+.react-calendar__tile--active {
+    background: #3182ce !important;
+    color: white !important;
+}
+
+.rbc-event {
+    background-color: #209696;
+    color: white;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.rbc-event:hover {
+    background-color: #1a8c8c;
+}
+
+.rbc-day-bg {
+    background-color: #f0f8ff;
+}
+
+.rbc-today {
+    background-color: #e0f7fa;
+}
+
+.rbc-time-slot {
+    border-left: 2px solid #209696;
+}
+
+/* 상태별 배경색 */
+.bg-green-200 {
+    background-color: #c6f6d5;
+}
+
+.bg-red-200 {
+    background-color: #feb2b2;
+}
+
+.bg-gray-200 {
+    background-color: #e2e8f0;
+}
